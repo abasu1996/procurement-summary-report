@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch-psr": "cds watch --open psr.psr/index.html?sap-ui-xx-viewCache=false --livereload false"
+    "watch-psr": "cds watch --open psr.psr/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "start": "cds-serve"
   },
   "repository": {
     "type": "git",
