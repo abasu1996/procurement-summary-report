@@ -12,6 +12,31 @@ build-parameters:
         - npx cds build --production
         - mkdir -p gen/router
 modules:
+  # PSR needs its own instance-level destination; destinations in Flowmate's
+  # separate service instance are not visible through psr-destination.
+  - name: psr-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: flowmate-common-auth
+        parameters:
+          service-key:
+            name: flowmate-common-auth-key
+      - name: psr-destination
+        parameters:
+          content-target: true
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Name: flowmate-common-api
+              Authentication: OAuth2ClientCredentials
+              TokenServiceInstanceName: flowmate-common-auth
+              TokenServiceKeyName: flowmate-common-auth-key
+              URL: https://flowmate-common-srv-org-b-test.cfapps.ap11.hana.ondemand.com
+          existing_destinations_policy: update
+    build-parameters:
+      no-source: true
+
   # Serves the UI (copied from app/psr/webapp) and forces the IAS/XSUAA login,
   # including for the deep link in the BPA approval e-mail.
   - name: psr-approuter
@@ -22,6 +47,8 @@ modules:
       buildpack: nodejs_buildpack
       memory: 256M
       disk-quota: 512M
+      routes:
+        - route: dialog-psr-form.cfapps.ap11.hana.ondemand.com
     properties:
       INCOMING_CONNECTION_TIMEOUT: 600000
     build-parameters:
@@ -83,6 +110,11 @@ modules:
       - name: psr-db
 
 resources:
+  - name: flowmate-common-auth
+    type: org.cloudfoundry.existing-service
+    parameters:
+      service-name: flowmate-common-auth
+
   # Gives psr-srv access to the subaccount destinations
   # (bpa_workflow_technical, flowmate-common-api).
   - name: psr-destination
