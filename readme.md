@@ -51,3 +51,31 @@ Use `requesterEmail`, `decision`, and `requestNumber` in the BPA mail to the req
 ## Learn More
 
 Learn more at <https://cap.cloud.sap>.
+
+## SAP BTP deployment
+
+Use Node.js 22.13 or newer in the Node.js 22 release line.
+
+```sh
+npm ci
+npm run build:mta
+npm run deploy
+```
+
+The MTA creates a dedicated `psr-db` HANA HDI container and deploys
+`psr-srv`, `psr-db-deployer`, and `psr-approuter`. It binds the existing
+`flowmate-common-auth` XSUAA instance, with user tokens forwarded to the
+Flowmate common master-data service. Users need its `MasterDataRead` role
+(or a role granting equivalent read access) for master-data dropdowns.
+
+The deployment target is the currently selected Cloud Foundry org/space.
+The default common-service URL targets AP11 space `org-b/test`; override
+the MTA `common-service-url` parameter when deploying to another target.
+Local development retains SQLite and the existing mock users.
+
+Application URL in `org-b/test`:
+https://psr-org-b-test.cfapps.ap11.hana.ondemand.com
+
+BPA e-mail automation still requires the optional
+`BPA_SUBMISSION_WEBHOOK_URL` and `BPA_DECISION_WEBHOOK_URL` environment
+variables documented above.

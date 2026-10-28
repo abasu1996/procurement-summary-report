@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch-psr": "cds watch --open psr.psr/index.html?sap-ui-xx-viewCache=false --livereload false"
+    "watch-psr": "cds watch --open psr.psr/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "start": "cds-serve",
+    "build": "cds build --production && node scripts/prepare-hana.js",
+    "build:mta": "mbt build",
+    "deploy": "CF_TRACE=false cf deploy mta_archives/psr_1.0.0.mtar"
   },
   "repository": {
     "type": "git",
@@ -20,49 +24,75 @@
   },
   "homepage": "https://github.com/RohithnaikS/procurement-summary-report#readme",
   "dependencies": {
-    "@cap-js/sqlite": "^2.4.0",
-    "@sap/cds": "^9.9.1"
+    "@cap-js/hana": "^2.8.3",
+    "@sap-cloud-sdk/connectivity": "^4.9.1",
+    "@sap-cloud-sdk/http-client": "^4.9.1",
+    "@sap-cloud-sdk/resilience": "^4.9.1",
+    "@sap/cds": "^9.9.1",
+    "@sap/xssec": "^4.15.0"
   },
   "workspaces": [
     "app/*"
   ],
   "devDependencies": {
+    "@cap-js/sqlite": "^2.4.3",
     "@sap/cds-dk": "^9",
     "cds-plugin-ui5": "^0.17.0"
   },
   "cds": {
     "requires": {
-      "db": {
-        "kind": "sqlite",
-        "credentials": {
-          "url": "db.sqlite"
-        }
+      "CommonMasterDataService": {
+        "kind": "odata-v4",
+        "model": "srv/external/common-master"
       },
-      "auth": {
-        "kind": "mocked",
-        "users": {
-          "alex.johnson@flowmate.demo": {
-            "password": "FlowmateUser1!"
-          },
-          "priya.sharma@flowmate.demo": {
-            "password": "FlowmateUser1!"
-          },
-          "daniel.kim@flowmate.demo": {
-            "password": "FlowmateUser1!"
-          },
-          "maya.perera@flowmate.demo": {
-            "password": "FlowmateUser1!"
+      "[development]": {
+        "db": {
+          "kind": "sqlite",
+          "credentials": {
+            "url": "db.sqlite"
+          }
+        },
+        "auth": {
+          "kind": "mocked",
+          "users": {
+            "alex.johnson@flowmate.demo": {
+              "password": "FlowmateUser1!"
+            },
+            "priya.sharma@flowmate.demo": {
+              "password": "FlowmateUser1!"
+            },
+            "daniel.kim@flowmate.demo": {
+              "password": "FlowmateUser1!"
+            },
+            "maya.perera@flowmate.demo": {
+              "password": "FlowmateUser1!"
+            }
+          }
+        },
+        "CommonMasterDataService": {
+          "credentials": {
+            "url": "http://localhost:4020/odata/v4/flowmate-common",
+            "username": "ca.admin@flowmate.demo",
+            "password": "FlowmateCAAdmin1!"
           }
         }
       },
-      "CommonMasterDataService": {
-        "kind": "odata-v4",
-        "credentials": {
-          "url": "http://localhost:4020/odata/v4/flowmate-common",
-          "username": "ca.admin@flowmate.demo",
-            "password": "FlowmateCAAdmin1!"
+      "[production]": {
+        "db": {
+          "kind": "hana"
+        },
+        "auth": {
+          "kind": "xsuaa"
+        },
+        "CommonMasterDataService": {
+          "credentials": {
+            "forwardAuthToken": true
+          }
         }
       }
     }
+  },
+  "engines": {
+    "node": "^22.13.0"
   }
 }
