@@ -17,5 +17,9 @@ mta_archives/
 
 # @cap-js/cds-typer
 @cds-models
+<<<<<<< HEAD
 
 app/router/resources/
+=======
+*.log
+>>>>>>> dde0743e1705c4a7d977703e92bf3768e0f664b7

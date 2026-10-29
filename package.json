@@ -6,10 +6,14 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch-psr": "cds watch --open psr.psr/index.html?sap-ui-xx-viewCache=false --livereload false",
+<<<<<<< HEAD
     "start": "cds-serve",
     "build": "cds build --production && node scripts/prepare-hana.js",
     "build:mta": "mbt build",
     "deploy": "CF_TRACE=false cf deploy mta_archives/psr_1.0.0.mtar"
+=======
+    "start": "cds-serve"
+>>>>>>> dde0743e1705c4a7d977703e92bf3768e0f664b7
   },
   "repository": {
     "type": "git",
