@@ -7,7 +7,8 @@ sap.ui.define([
     "sap/m/StandardListItem",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
-    "sap/ui/core/format/DateFormat"
+    "sap/ui/core/format/DateFormat",
+    "psr/psr/model/formatter"
 ], function (
     Controller,
     JSONModel,
@@ -17,7 +18,8 @@ sap.ui.define([
     StandardListItem,
     Filter,
     FilterOperator,
-    DateFormat
+    DateFormat,
+    formatter
 ) {
     "use strict";
 
@@ -31,7 +33,7 @@ sap.ui.define([
                 objective: "",
                 type: "",
                 recommendation: "",
-                currency: "",
+                currency: "LKR",
                 valueWithoutTax: "",
                 valueWithTax: "",
                 ticApproval: "",
@@ -175,7 +177,7 @@ this.getView().setModel(oApproverListModel, "approverList");
                 objective: "",
                 type: "",
                 recommendation: "",
-                currency: "",
+                currency: "LKR",
                 valueWithoutTax: "",
                 valueWithTax: "",
                 ticApproval: "",
@@ -237,6 +239,7 @@ this.getView().setModel(oApproverListModel, "approverList");
                 this.byId(sControlId).setSelectedIndex(-1);
             }.bind(this));
 
+            this._fitAllComboBoxWidths();
             this._loadLoggedInUser();
         },
 
@@ -291,7 +294,7 @@ this.getView().setModel(oApproverListModel, "approverList");
                         technicalEvaluation: oRequest.technicalEvaluationSummary || "",
                         commercialEvaluation: oRequest.commercialEvaluationSummary || "",
                         numberOfVendors: oRequest.numberOfVendorsSelected_code || "",
-                        requesterName: oRequest.requesterName || "",
+                        requesterName: formatter.displayName(oRequest.requesterName, oRequest.requesterEmail),
                         requesterId: oRequest.createdBy || "",
                         paymentTerms: oRequest.paymentTerms_code || "",
                         paymentTermsDescription: oRequest.paymentTermDescription || "",
@@ -369,7 +372,8 @@ this.getView().setModel(oApproverListModel, "approverList");
                     name: oApprover.approverName || oApprover.approverEmail || "",
                     email: oApprover.approverEmail || "",
                     isCurrent: false,
-                    actionedAtText: oApprover.actionedAt ? oDateFormat.format(new Date(oApprover.actionedAt)) : ""
+                    actionedAtText: oApprover.actionedAt ? oDateFormat.format(new Date(oApprover.actionedAt)) : "",
+                    remarks: oApprover.comments || ""
                 };
 
                 if (sStatus === "APPROVED") {
@@ -443,6 +447,9 @@ this.getView().setModel(oApproverListModel, "approverList");
         },
 
 
+        // Read-only review for requesters and approvers. Controls are made
+        // non-editable rather than disabled so every value keeps full
+        // contrast; edit-only buttons are hidden instead of greyed out.
         _setFormReadOnly: function (bReadOnly) {
 
             this.getView().findAggregatedObjects(true, function (oControl) {
@@ -452,8 +459,10 @@ this.getView().setModel(oApproverListModel, "approverList");
             }).forEach(function (oControl) {
                 if (oControl.isA("sap.m.InputBase")) {
                     oControl.setEditable(!bReadOnly);
+                    this._toggleReadOnlyPlaceholder(oControl, bReadOnly);
                 } else if (oControl.isA("sap.m.RadioButtonGroup")) {
-                    oControl.setEnabled(!bReadOnly);
+                    oControl.setEnabled(true);
+                    oControl.setEditable(!bReadOnly);
                 } else if (
                     !oControl.data("keepEnabled") &&
                     oControl.getId() !== this.byId("idCancelButton").getId() &&
@@ -465,7 +474,87 @@ this.getView().setModel(oApproverListModel, "approverList");
             }.bind(this));
 
             this.byId("idSaveSubmitForApprovalButton").setVisible(!bReadOnly);
+            this.byId("idAddVendorButton").setVisible(!bReadOnly);
             this.byId("idCancelButton").setText(bReadOnly ? "Back to Dashboard" : "Cancel");
+
+            if (bReadOnly) {
+                this._showStoredComboBoxValues();
+            }
+        },
+
+
+        // "Enter the ..." hints in an empty read-only field look like data;
+        // show a dash instead and restore the hint when editing again.
+        _toggleReadOnlyPlaceholder: function (oControl, bReadOnly) {
+
+            if (bReadOnly) {
+                if (oControl.data("editPlaceholder") == null) {
+                    oControl.data("editPlaceholder", oControl.getPlaceholder() || "");
+                }
+                oControl.setPlaceholder("—");
+            } else if (oControl.data("editPlaceholder") != null) {
+                oControl.setPlaceholder(oControl.data("editPlaceholder"));
+            }
+        },
+
+
+        // Dropdown texts (tax codes, purchasing groups, payment modes, ...)
+        // can be long, so every combo box grows with its selected text
+        // instead of cutting it off. Capped at the form width by
+        // .psrAutoWidthCombo.
+        _fitComboBoxWidth: function (oComboBox) {
+
+            var sText = oComboBox.getValue() || oComboBox.getPlaceholder() || "";
+            var iWidthRem = Math.max(16, Math.ceil(sText.length * 0.6) + 4);
+
+            oComboBox.setWidth(iWidthRem + "rem");
+        },
+
+
+        // Every combo box in the view, including the dynamic approver rows.
+        _fitAllComboBoxWidths: function () {
+
+            this.getView().findAggregatedObjects(true, function (oControl) {
+                return oControl.isA("sap.m.ComboBox");
+            }).forEach(this._fitComboBoxWidth, this);
+        },
+
+
+        onComboBoxFit: function (oEvent) {
+            this._fitComboBoxWidth(oEvent.getSource());
+        },
+
+
+        // Combo boxes whose list comes from the server (or a fixed list) show
+        // nothing if the stored key isn't among the loaded items. Fall back to
+        // the stored value so reviewers always see what was submitted.
+        _showStoredComboBoxValues: function () {
+
+            [
+                "idCurrencyComboBox",
+                "idPaymentTermsComboBox",
+                "idPaymentModeComboBox",
+                "idTaxCodesComboBox",
+                "idExpenseTypesComboBox",
+                "idPurchasingOrganizationsComboBox",
+                "idPurchasingGroupsComboBox",
+                "idIncoTermsComboBox"
+            ].forEach(function (sControlId) {
+                var oComboBox = this.byId(sControlId);
+                var fnApply = function () {
+                    var sKey = oComboBox.getSelectedKey();
+                    if (sKey && !oComboBox.getSelectedItem()) {
+                        oComboBox.setValue(sKey);
+                    }
+                    this._fitComboBoxWidth(oComboBox);
+                }.bind(this);
+                fnApply();
+                // Server lists may arrive after the request itself.
+                var oItemsBinding = oComboBox.getBinding("items");
+                if (oItemsBinding && oItemsBinding.isA("sap.ui.model.odata.v4.ODataListBinding")) {
+                    oItemsBinding.attachEventOnce("dataReceived", fnApply);
+                }
+            }.bind(this));
         },
 
 
@@ -495,7 +584,7 @@ this.getView().setModel(oApproverListModel, "approverList");
                     var oResult = oOperation.getBoundContext().getObject();
 
                     if (oResult && oResult.name) {
-                        oFormModel.setProperty("/requesterName", oResult.name);
+                        oFormModel.setProperty("/requesterName", formatter.displayName(oResult.name, oResult.email));
                         oFormModel.setProperty("/requesterId", oResult.userID || "");
                     } else {
                         this._loadLoggedInUserFromShell(oFormModel);
@@ -527,7 +616,7 @@ this.getView().setModel(oApproverListModel, "approverList");
                                 oUserInfo.getId() ||
                                 "";
 
-                            oFormModel.setProperty("/requesterName", sName);
+                            oFormModel.setProperty("/requesterName", formatter.displayName(sName, oUserInfo.getEmail()));
                             oFormModel.setProperty("/requesterId", oUserInfo.getId() || "");
                         })
                         .catch(function () {
@@ -1253,28 +1342,15 @@ oCreateCompleted
             sRequestID
         );
 
-        // Upload the file contents before approvers are notified, so the
-        // attachments are there when they open the request.
-        return this._uploadAttachmentContents(oODataModel.getServiceUrl(), aAttachments)
-            .then(function (aFailedFiles) {
-                return this._startApprovalProcess(sRequestID).then(function () {
-                    return aFailedFiles;
-                });
-            }.bind(this));
+        // Start BPA approval process
+        return this._startApprovalProcess(sRequestID);
 
     }.bind(this))
-    .then(function (aFailedFiles) {
+    .then(function () {
 
-        if (aFailedFiles.length) {
-            MessageBox.warning(
-                "The procurement summary report was submitted, but these attachments could not be uploaded:\n\n" +
-                aFailedFiles.join("\n")
-            );
-        } else {
-            MessageToast.show(
-                "Procurement summary report submitted for approval."
-            );
-        }
+        MessageToast.show(
+            "Procurement summary report submitted for approval."
+        );
 
         this.getOwnerComponent()
             .getRouter()
@@ -1423,26 +1499,97 @@ oCreateCompleted
         },
 
         onApprove: function () {
-            this._confirmDecision("APPROVED", "Approve this procurement request?");
+            this._confirmDecision("APPROVED");
         },
 
         onReject: function () {
-            this._confirmDecision("REJECTED", "Reject this procurement request?");
+            this._confirmDecision("REJECTED");
         },
 
-        _confirmDecision: function (sDecision, sQuestion) {
-            MessageBox.confirm(sQuestion, {
-                actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
-                emphasizedAction: MessageBox.Action.OK,
-                onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.OK) {
-                        this._submitDecision(sDecision);
-                    }
-                }.bind(this)
+        onExit: function () {
+            if (this._oDecisionDialog) {
+                this._oDecisionDialog.destroy();
+            }
+        },
+
+        // Asks for remarks before the decision is sent. Remarks are required
+        // to reject and optional to approve; they are stored on the approver
+        // and passed to the next approver's BPA e-mail.
+        _confirmDecision: function (sDecision) {
+            var bReject = sDecision === "REJECTED";
+
+            if (!this._oDecisionDialog) {
+                this._createDecisionDialog();
+            }
+
+            this._oDecisionDialog.getModel("decision").setData({
+                decision: sDecision,
+                title: bReject ? "Reject Request" : "Approve Request",
+                actionText: bReject ? "Reject" : "Approve",
+                actionType: bReject ? "Reject" : "Accept",
+                remarksRequired: bReject,
+                placeholder: bReject
+                    ? "Enter the reason for rejecting this request"
+                    : "Optional remarks for the requester and the next approver",
+                remarks: "",
+                canSubmit: !bReject
             });
+            this._oDecisionDialog.open();
         },
 
-        _submitDecision: function (sDecision) {
+        _createDecisionDialog: function () {
+            var oDecisionModel = new JSONModel({});
+
+            // Deliberately not added as a view dependent: _setFormReadOnly
+            // walks the view's aggregations and would lock the remarks field.
+            this._oDecisionDialog = new sap.m.Dialog({
+                title: "{decision>/title}",
+                contentWidth: "32rem",
+                content: [
+                    new sap.m.VBox({
+                        items: [
+                            new sap.m.Label({
+                                text: "Remarks",
+                                required: "{decision>/remarksRequired}"
+                            }),
+                            new sap.m.TextArea({
+                                value: "{decision>/remarks}",
+                                placeholder: "{decision>/placeholder}",
+                                valueLiveUpdate: true,
+                                rows: 4,
+                                width: "100%",
+                                maxLength: 1000,
+                                liveChange: function (oEvent) {
+                                    oDecisionModel.setProperty("/canSubmit",
+                                        !oDecisionModel.getProperty("/remarksRequired") ||
+                                        !!oEvent.getParameter("value").trim());
+                                }
+                            })
+                        ]
+                    }).addStyleClass("sapUiSmallMargin")
+                ],
+                beginButton: new sap.m.Button({
+                    text: "{decision>/actionText}",
+                    type: "{decision>/actionType}",
+                    enabled: "{decision>/canSubmit}",
+                    press: function () {
+                        var oData = oDecisionModel.getData();
+                        this._oDecisionDialog.close();
+                        this._submitDecision(oData.decision, (oData.remarks || "").trim());
+                    }.bind(this)
+                }),
+                endButton: new sap.m.Button({
+                    text: "Cancel",
+                    press: function () {
+                        this._oDecisionDialog.close();
+                    }.bind(this)
+                })
+            });
+
+            this._oDecisionDialog.setModel(oDecisionModel, "decision");
+        },
+
+        _submitDecision: function (sDecision, sRemarks) {
             var oModel = this.getOwnerComponent().getModel();
             var sRequestId = this.getView().getModel("review").getProperty("/requestId");
             if (!oModel || !sRequestId) {
@@ -1454,6 +1601,7 @@ oCreateCompleted
             var oAction = oModel.bindContext("/decideApproval(...)");
             oAction.setParameter("requestID", sRequestId);
             oAction.setParameter("decision", sDecision);
+            oAction.setParameter("remarks", sRemarks || "");
             oAction.execute()
                 .then(function () {
                     MessageToast.show(sDecision === "APPROVED" ? "Request approved." : "Request rejected.");
@@ -1836,15 +1984,19 @@ _startApprovalProcess: function (sRequestID) {
         sRequestID
     );
 
+    // Resolves with the backend status: NOTIFIED, ALREADY_NOTIFIED or
+    // NOTIFICATION_FAILED (request saved, but the BPA e-mail could not start).
     return oAction.execute()
-        .then(function (oResult) {
+        .then(function () {
+
+            var sStatus = oAction.getBoundContext().getProperty("value");
 
             console.log(
-                "BPA approval process started:",
-                oResult
+                "BPA approval process:",
+                sStatus
             );
 
-            return oResult;
+            return sStatus;
 
         })
         .catch(function (oError) {

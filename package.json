@@ -25,9 +25,15 @@
   "homepage": "https://github.com/RohithnaikS/procurement-summary-report#readme",
   "dependencies": {
     "@cap-js/hana": "^2.8.3",
+<<<<<<< HEAD
     "@sap-cloud-sdk/connectivity": "^4.9.1",
     "@sap-cloud-sdk/http-client": "^4.9.1",
     "@sap-cloud-sdk/resilience": "^4.9.1",
+=======
+    "@cap-js/sqlite": "^2.4.0",
+    "@sap-cloud-sdk/connectivity": "^4.9.1",
+    "@sap-cloud-sdk/http-client": "^4.9.1",
+>>>>>>> 7b95eb9508adec1e92b3871010d9e2c5a418ddcc
     "@sap/cds": "^9.9.1",
     "@sap/xssec": "^4.15.0"
   },
@@ -42,8 +48,12 @@
   "cds": {
     "requires": {
       "CommonMasterDataService": {
+<<<<<<< HEAD
         "kind": "odata-v4",
         "model": "srv/external/common-master"
+=======
+        "kind": "odata-v4"
+>>>>>>> 7b95eb9508adec1e92b3871010d9e2c5a418ddcc
       },
       "[development]": {
         "db": {
@@ -56,6 +66,7 @@
           "kind": "mocked",
           "users": {
             "alex.johnson@flowmate.demo": {
+<<<<<<< HEAD
               "password": "FlowmateUser1!"
             },
             "priya.sharma@flowmate.demo": {
@@ -66,6 +77,22 @@
             },
             "maya.perera@flowmate.demo": {
               "password": "FlowmateUser1!"
+=======
+              "password": "FlowmateUser1!",
+              "roles": ["Admin", "Requester"]
+            },
+            "priya.sharma@flowmate.demo": {
+              "password": "FlowmateUser1!",
+              "roles": ["Requester"]
+            },
+            "daniel.kim@flowmate.demo": {
+              "password": "FlowmateUser1!",
+              "roles": ["Requester"]
+            },
+            "maya.perera@flowmate.demo": {
+              "password": "FlowmateUser1!",
+              "roles": ["Requester"]
+>>>>>>> 7b95eb9508adec1e92b3871010d9e2c5a418ddcc
             }
           }
         },
@@ -78,6 +105,7 @@
         }
       },
       "[production]": {
+<<<<<<< HEAD
         "db": {
           "kind": "hana"
         },
@@ -87,6 +115,14 @@
         "CommonMasterDataService": {
           "credentials": {
             "forwardAuthToken": true
+=======
+        "db": "hana",
+        "auth": "xsuaa",
+        "CommonMasterDataService": {
+          "credentials": {
+            "destination": "flowmate-common-api",
+            "path": "/odata/v4/flowmate-common"
+>>>>>>> 7b95eb9508adec1e92b3871010d9e2c5a418ddcc
           }
         }
       }
